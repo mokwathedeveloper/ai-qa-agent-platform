@@ -8,3 +8,4 @@ uvicorn
 python-dotenv
 pydantic
 pytest-json-report
+sqlalchemy

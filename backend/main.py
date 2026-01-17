@@ -1,12 +1,22 @@
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import FastAPI, BackgroundTasks, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from backend.agent.runner import run_automation_tests
 from backend.agent.analyzer import analyze_test_run
+from backend.database.core import init_db, get_db
+from backend.database.models import Bug
+from backend.schemas import BugSchema
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import uuid
+from sqlalchemy.orm import Session
+from contextlib import asynccontextmanager
 
-app = FastAPI(title="AI QA Agent Platform API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
+app = FastAPI(title="AI QA Agent Platform API", lifespan=lifespan)
 
 # Configure CORS
 app.add_middleware(
@@ -35,11 +45,10 @@ def execute_tests_task(job_id: str):
     job_store[job_id]["status"] = "RUNNING"
     try:
         result = run_automation_tests()
-        job_store[job_id].update(result) # status, logs, exit_code, report_data, report_file
+        job_store[job_id].update(result)
         
         # Analyze failures
         if result["status"] == "FAILED":
-             # We might want to set status to "ANALYZING" but let's keep it simple
              bugs = analyze_test_run(result)
              job_store[job_id]["bugs"] = bugs
         else:
@@ -59,3 +68,7 @@ def trigger_tests(background_tasks: BackgroundTasks):
 @app.get("/jobs/{job_id}", response_model=JobStatus)
 def get_job_status(job_id: str):
     return job_store.get(job_id, {"job_id": job_id, "status": "NOT_FOUND", "logs": [], "bugs": []})
+
+@app.get("/bugs", response_model=List[BugSchema])
+def list_bugs(db: Session = Depends(get_db)):
+    return db.query(Bug).order_by(Bug.created_at.desc()).all()
