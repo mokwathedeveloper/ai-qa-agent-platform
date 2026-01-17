@@ -1,5 +1,4 @@
 from backend.agent.ai_client import AIClient
-from backend.agent.utest_client import UTestClient
 from backend.agent.deduplicator import get_error_signature, is_duplicate
 from backend.database.core import SessionLocal
 from backend.database.models import Bug
@@ -9,7 +8,6 @@ def analyze_test_run(run_result: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Analyzes the test run result. If failed, uses AI to generate bug reports.
     Checks for duplicates in DB.
-    Submits to uTest API.
     Returns a list of bug reports.
     """
     bugs_found = []
@@ -21,7 +19,6 @@ def analyze_test_run(run_result: Dict[str, Any]) -> List[Dict[str, Any]]:
     tests = report_data.get("tests", [])
     
     client = AIClient()
-    utest = UTestClient()
     db = SessionLocal()
     
     try:
@@ -62,11 +59,7 @@ def analyze_test_run(run_result: Dict[str, Any]) -> List[Dict[str, Any]]:
                     
                 bug_report = client.analyze_failure(failure_context, test_name)
                 
-                # Submit to uTest
-                external_id = utest.submit_bug(bug_report)
-                submission_status = "SUBMITTED" if external_id and "ID" in external_id else "NEW"
-                
-                # Save to DB
+                # Save to DB (Always NEW since we can't auto-submit)
                 new_bug = Bug(
                     test_name=test_name,
                     summary=bug_report.get("summary", "No Summary"),
@@ -75,14 +68,14 @@ def analyze_test_run(run_result: Dict[str, Any]) -> List[Dict[str, Any]]:
                     expected_result=str(bug_report.get("expected_result", "")),
                     error_signature=signature,
                     severity=bug_report.get("severity", "Medium"),
-                    status=submission_status
+                    status="NEW"
                 )
                 db.add(new_bug)
                 db.commit()
                 db.refresh(new_bug)
                 
                 bug_report["id"] = new_bug.id
-                bug_report["status"] = submission_status
+                bug_report["status"] = "NEW"
                 bugs_found.append(bug_report)
     except Exception as e:
         print(f"Error in analyzer: {e}")

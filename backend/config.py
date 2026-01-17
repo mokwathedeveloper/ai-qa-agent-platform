@@ -19,10 +19,6 @@ class Settings:
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo-0125")
 
-    # uTest
-    UTEST_API_KEY = os.getenv("UTEST_API_KEY")
-    UTEST_BASE_URL = os.getenv("UTEST_BASE_URL", "https://platform.utest.com/api/v1")
-
     # Automation
     TEST_TIMEOUT_SECONDS = int(os.getenv("TEST_TIMEOUT_SECONDS", 300)) # 5 minutes default
 

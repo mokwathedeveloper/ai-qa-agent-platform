@@ -79,6 +79,33 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, [jobId, status]);
 
+  const copyToClipboard = () => {
+    if (!selectedBug) return;
+    
+    const report = `
+**Title:** ${selectedBug.summary}
+
+**Environment:** ${selectedBug.environment || "N/A"}
+
+**Preconditions:**
+(Add preconditions here)
+
+**Steps:**
+${selectedBug.steps}
+
+**Expected Result:**
+${selectedBug.expected_result}
+
+**Actual Result:**
+${selectedBug.actual_result}
+
+**Severity:** ${selectedBug.severity}
+    `.trim();
+
+    navigator.clipboard.writeText(report);
+    alert('Bug report copied to clipboard!');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto space-y-8">
@@ -244,10 +271,17 @@ export default function Dashboard() {
                                 </div>
                             </div>
                         </div>
-                        <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                            <button
+                        <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
+                             <button
                                 type="button"
                                 className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
+                                onClick={copyToClipboard}
+                            >
+                                Copy for uTest
+                            </button>
+                            <button
+                                type="button"
+                                className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                                 onClick={() => setSelectedBug(null)}
                             >
                                 Close

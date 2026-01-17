@@ -6,10 +6,9 @@ def test_analyze_no_failure():
     bugs = analyze_test_run(result)
     assert bugs == []
 
-@patch("backend.agent.analyzer.UTestClient")
 @patch("backend.agent.analyzer.SessionLocal")
 @patch("backend.agent.analyzer.AIClient")
-def test_analyze_failure(MockAIClient, MockSessionLocal, MockUTestClient):
+def test_analyze_failure(MockAIClient, MockSessionLocal):
     # Mock AI
     mock_ai = MockAIClient.return_value
     mock_ai.analyze_failure.return_value = {"summary": "Bug 1", "severity": "High"}
@@ -20,10 +19,6 @@ def test_analyze_failure(MockAIClient, MockSessionLocal, MockUTestClient):
     # db.query(Bug).filter(...).first() -> None
     mock_db.query.return_value.filter.return_value.first.return_value = None
     
-    # Mock UTest
-    mock_utest = MockUTestClient.return_value
-    mock_utest.submit_bug.return_value = "UTEST-ID-123"
-
     result = {
         "status": "FAILED",
         "report_data": {
@@ -40,7 +35,7 @@ def test_analyze_failure(MockAIClient, MockSessionLocal, MockUTestClient):
     bugs = analyze_test_run(result)
     assert len(bugs) == 1
     assert bugs[0]["summary"] == "Bug 1"
-    assert bugs[0]["status"] == "SUBMITTED"
+    assert bugs[0]["status"] == "NEW" # Verify it defaults to NEW
     
     # Verify DB add was called
     mock_db.add.assert_called()
