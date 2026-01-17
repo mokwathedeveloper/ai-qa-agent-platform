@@ -8,6 +8,7 @@ export default function Dashboard() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [bugs, setBugs] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
+  const [selectedBug, setSelectedBug] = useState<any | null>(null);
 
   const fetchHistory = () => {
       fetch('http://localhost:8000/bugs')
@@ -121,7 +122,7 @@ export default function Dashboard() {
                             </div>
                         ) : (
                             bugs.map((bug, index) => (
-                                <div key={index} className="p-6 hover:bg-gray-50">
+                                <div key={index} className="p-6 hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedBug(bug)}>
                                     <div className="flex justify-between items-start">
                                         <div className="space-y-2">
                                             <h3 className="text-lg font-medium text-gray-900">{bug.summary || 'No Summary'}</h3>
@@ -154,7 +155,7 @@ export default function Dashboard() {
                             </div>
                         ) : (
                             history.map((bug, index) => (
-                                <div key={index} className="p-6 hover:bg-gray-50">
+                                <div key={index} className="p-6 hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedBug(bug)}>
                                     <div className="flex justify-between items-start">
                                         <div className="space-y-2">
                                             <h3 className="text-lg font-medium text-gray-900">{bug.summary}</h3>
@@ -181,6 +182,67 @@ export default function Dashboard() {
                 </div>
             </div>
         </main>
+
+        {/* Bug Details Modal */}
+        {selectedBug && (
+            <div className="fixed inset-0 z-10 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                    <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setSelectedBug(null)}></div>
+                    <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                    <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+                        <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                            <div className="sm:flex sm:items-start">
+                                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                                    <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                                        Bug Details
+                                    </h3>
+                                    <div className="mt-4 space-y-4 text-sm text-gray-700">
+                                        <p><strong>Test Name:</strong> {selectedBug.test_name}</p>
+                                        <p><strong>Summary:</strong> {selectedBug.summary}</p>
+                                        <p><strong>Environment:</strong> {selectedBug.environment || "N/A"}</p>
+                                        <div>
+                                            <strong>Steps:</strong>
+                                            <p className="whitespace-pre-wrap mt-1 bg-gray-50 p-2 rounded">{selectedBug.steps}</p>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <strong>Actual Result:</strong>
+                                                <p className="whitespace-pre-wrap mt-1 bg-red-50 p-2 rounded text-red-900">{selectedBug.actual_result}</p>
+                                            </div>
+                                            <div>
+                                                <strong>Expected Result:</strong>
+                                                <p className="whitespace-pre-wrap mt-1 bg-green-50 p-2 rounded text-green-900">{selectedBug.expected_result}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-between items-center mt-4">
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                                Status: {selectedBug.status}
+                                            </span>
+                                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                                                selectedBug.severity === 'Critical' ? 'bg-red-100 text-red-800' :
+                                                selectedBug.severity === 'High' ? 'bg-orange-100 text-orange-800' :
+                                                'bg-yellow-100 text-yellow-800'
+                                            }`}>
+                                                Severity: {selectedBug.severity}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                            <button
+                                type="button"
+                                className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
+                                onClick={() => setSelectedBug(null)}
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
       </div>
     </div>
   );
