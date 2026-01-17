@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 export default function Dashboard() {
   const [status, setStatus] = useState<'IDLE' | 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'ERROR'>('IDLE');
   const [logs, setLogs] = useState<string[]>([]);
@@ -11,7 +13,7 @@ export default function Dashboard() {
   const [selectedBug, setSelectedBug] = useState<any | null>(null);
 
   const fetchHistory = () => {
-      fetch('http://localhost:8000/bugs')
+      fetch(`${API_URL}/bugs`)
         .then(res => res.json())
         .then(data => setHistory(data))
         .catch(console.error);
@@ -28,7 +30,7 @@ export default function Dashboard() {
     setJobId(null);
     
     try {
-        const res = await fetch('http://localhost:8000/run-tests', { method: 'POST' });
+        const res = await fetch(`${API_URL}/run-tests`, { method: 'POST' });
         if (!res.ok) throw new Error('Failed to start tests');
         const data = await res.json();
         setJobId(data.job_id);
@@ -42,9 +44,21 @@ export default function Dashboard() {
   useEffect(() => {
     if (!jobId || status === 'COMPLETED' || status === 'FAILED' || status === 'ERROR') return;
 
+    // Safety: Max polls to prevent infinite frontend loops if backend hangs
+    let polls = 0;
+    const MAX_POLLS = 600; // ~10 minutes
+
     const interval = setInterval(async () => {
+        polls++;
+        if (polls > MAX_POLLS) {
+             setStatus('ERROR');
+             setLogs(prev => [...prev, 'Frontend execution timeout (max polls reached).']);
+             clearInterval(interval);
+             return;
+        }
+
         try {
-            const res = await fetch(`http://localhost:8000/jobs/${jobId}`);
+            const res = await fetch(`${API_URL}/jobs/${jobId}`);
             if (!res.ok) return;
             const data = await res.json();
             

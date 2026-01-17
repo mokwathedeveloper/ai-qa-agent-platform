@@ -2,6 +2,7 @@ import subprocess
 import os
 import json
 from typing import Dict, Any
+from backend.config import settings
 
 def run_automation_tests() -> Dict[str, Any]:
     """
@@ -27,17 +28,28 @@ def run_automation_tests() -> Dict[str, Any]:
         f"--json-report-file={report_file}"
     ]
     
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True
-    )
-    
-    logs = result.stdout.splitlines()
-    if result.stderr:
-        logs.extend(result.stderr.splitlines())
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=settings.TEST_TIMEOUT_SECONDS # Prevents infinite hangs
+        )
         
-    status = "COMPLETED" if result.returncode == 0 else "FAILED"
+        logs = result.stdout.splitlines()
+        if result.stderr:
+            logs.extend(result.stderr.splitlines())
+            
+        status = "COMPLETED" if result.returncode == 0 else "FAILED"
+        exit_code = result.returncode
+    except subprocess.TimeoutExpired:
+        logs = ["Tests timed out after {} seconds.".format(settings.TEST_TIMEOUT_SECONDS)]
+        status = "FAILED"
+        exit_code = -1
+    except Exception as e:
+        logs = [f"Execution failed: {e}"]
+        status = "ERROR"
+        exit_code = -1
     
     # Read the JSON report if available
     report_data = {}
@@ -51,7 +63,7 @@ def run_automation_tests() -> Dict[str, Any]:
     return {
         "status": status,
         "logs": logs,
-        "exit_code": result.returncode,
+        "exit_code": exit_code,
         "report_file": report_file,
         "report_data": report_data
     }

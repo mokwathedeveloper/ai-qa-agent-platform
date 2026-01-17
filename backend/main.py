@@ -6,6 +6,7 @@ from backend.agent.analyzer import analyze_test_run
 from backend.database.core import init_db, get_db
 from backend.database.models import Bug
 from backend.schemas import BugSchema
+from backend.config import settings
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import uuid
@@ -23,14 +24,13 @@ app = FastAPI(title="AI QA Agent Platform API", lifespan=lifespan)
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Mount artifacts directory for static file serving
-# Ensure the directory exists
 ARTIFACTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "artifacts")
 os.makedirs(ARTIFACTS_DIR, exist_ok=True)
 app.mount("/artifacts", StaticFiles(directory=ARTIFACTS_DIR), name="artifacts")

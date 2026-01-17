@@ -1,12 +1,11 @@
-import os
 import requests
 from typing import Dict, Any
+from backend.config import settings
 
 class UTestClient:
     def __init__(self):
-        self.api_key = os.getenv("UTEST_API_KEY")
-        # Placeholder URL - would be replaced by actual endpoint
-        self.base_url = "https://platform.utest.com/api/v1" 
+        self.api_key = settings.UTEST_API_KEY
+        self.base_url = settings.UTEST_BASE_URL
         
     def submit_bug(self, bug_report: Dict[str, Any]) -> str:
         """

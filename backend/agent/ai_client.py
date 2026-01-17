@@ -1,18 +1,15 @@
-import os
 import json
 from openai import OpenAI
 from typing import Dict, Any
+from backend.config import settings
 
 class AIClient:
     def __init__(self):
-        # In production, we'd raise error if key is missing, 
-        # but for dev/demo we might want to fail gracefully or mock if not set.
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
+        if not settings.OPENAI_API_KEY:
             print("Warning: OPENAI_API_KEY not set.")
             self.client = None
         else:
-            self.client = OpenAI(api_key=api_key)
+            self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
         
     def analyze_failure(self, logs: list[str], test_name: str) -> Dict[str, Any]:
         if not self.client:
@@ -26,7 +23,7 @@ class AIClient:
                 "severity": "Low"
             }
 
-        logs_text = "\n".join(logs[-50:]) # Send last 50 lines to avoid token limits
+        logs_text = "\n".join(logs[-50:]) # Send last 50 lines
         
         prompt = f"""
         You are a Senior QA Automation Engineer. Analyze the following Playwright test failure logs and generate a professional bug report in uTest standard format.
@@ -47,7 +44,7 @@ class AIClient:
         
         try:
             response = self.client.chat.completions.create(
-                model="gpt-3.5-turbo-0125", # Supports json_object
+                model=settings.OPENAI_MODEL,
                 messages=[
                     {"role": "system", "content": "You are a helpful QA assistant that outputs JSON."},
                     {"role": "user", "content": prompt}
