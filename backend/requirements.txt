@@ -9,3 +9,6 @@ python-dotenv
 pydantic
 pytest-json-report
 sqlalchemy
+python-jose[cryptography]
+passlib[bcrypt]
+websockets

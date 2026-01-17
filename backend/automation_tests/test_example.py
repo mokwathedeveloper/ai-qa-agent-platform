@@ -1,11 +1,14 @@
 import pytest
 from playwright.sync_api import Page, expect
+import os
+import re
 
 def test_example_domain(page: Page):
     """
-    Test case to verify Example Domain.
+    Test case to verify the domain provided in the TARGET_URL environment variable.
     """
-    page.goto("https://example.com")
-    expect(page).to_have_title("Example Domain")
-    # Intentional failure for demo purposes? No, let's make it pass first.
-    # We can add a failing one later to test the bug reporting.
+    target_url = os.environ.get("TARGET_URL", "https://example.com")
+    page.goto(target_url)
+    # A generic check that might work for many pages, but can be improved.
+    # For now, we just check that the page title is not empty.
+    expect(page).to_have_title(re.compile(r".+"))

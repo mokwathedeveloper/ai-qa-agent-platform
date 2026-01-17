@@ -1,0 +1,34 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "AI QA Agent Platform Backend"
+requires-python = ">=3.11"
+dependencies = [
+    "playwright",
+    "pytest-playwright",
+    "pytest",
+    "requests",
+    "openai",
+    "fastapi",
+    "uvicorn",
+    "python-dotenv",
+    "pydantic",
+    "pytest-json-report",
+    "sqlalchemy",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["backend", "backend.*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+addopts = "--strict-markers"
+testpaths = [
+    "automation_tests",
+    "tests",
+]

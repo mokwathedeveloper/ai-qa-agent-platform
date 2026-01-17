@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Network Monitor</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .panel { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .log { background: #1a1a1a; color: #00ff00; padding: 15px; border-radius: 4px; font-family: monospace; height: 300px; overflow-y: auto; }
+        .status { padding: 5px 10px; border-radius: 4px; color: white; font-weight: bold; }
+        .success { background: #28a745; }
+        .error { background: #dc3545; }
+        .warning { background: #ffc107; color: black; }
+        .info { background: #17a2b8; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        input, textarea { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Frontend Network Monitor & Tester</h1>
+        
+        <div class="panel">
+            <h2>Connection Status</h2>
+            <div id="connectionStatus">
+                <span class="status info">Checking...</span>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="panel">
+                <h2>Authentication Test</h2>
+                <input type="text" id="username" placeholder="Username" value="testuser">
+                <input type="email" id="email" placeholder="Email" value="test@example.com">
+                <input type="password" id="password" placeholder="Password" value="testpass123">
+                <button class="btn-primary" onclick="testRegister()">Test Register</button>
+                <button class="btn-success" onclick="testLogin()">Test Login</button>
+                <button class="btn-danger" onclick="testLogout()">Logout</button>
+                <div id="authStatus"></div>
+            </div>
+
+            <div class="panel">
+                <h2>WebSocket Test</h2>
+                <input type="text" id="jobId" placeholder="Job ID (auto-filled after test run)">
+                <button class="btn-primary" onclick="testWebSocket()">Test WebSocket</button>
+                <button class="btn-danger" onclick="closeWebSocket()">Close WebSocket</button>
+                <div id="wsStatus"></div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>API Test</h2>
+            <input type="url" id="testUrl" placeholder="Test URL" value="https://example.com">
+            <textarea id="instructions" placeholder="Testing instructions" rows="3">Basic functionality test for system verification</textarea>
+            <button class="btn-primary" onclick="runTest()">Run Test</button>
+            <button class="btn-success" onclick="checkJobStatus()">Check Job Status</button>
+            <div id="apiStatus"></div>
+        </div>
+
+        <div class="panel">
+            <h2>Network Activity Log</h2>
+            <button class="btn-primary" onclick="clearLog()">Clear Log</button>
+            <div id="networkLog" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+        let token = localStorage.getItem('token');
+        let currentJobId = null;
+        let websocket = null;
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('networkLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff4444' : type === 'success' ? '#44ff44' : type === 'warning' ? '#ffff44' : '#00ff00';
+            logDiv.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function updateStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const statusClass = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : 'info';
+            element.innerHTML = `<span class="status ${statusClass}">${message}</span>`;
+        }
+
+        function clearLog() {
+            document.getElementById('networkLog').innerHTML = '';
+        }
+
+        async function checkConnection() {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                if (response.ok) {
+                    updateStatus('connectionStatus', 'Backend Connected', 'success');
+                    log('✅ Backend connection successful', 'success');
+                } else {
+                    updateStatus('connectionStatus', 'Backend Error', 'error');
+                    log('❌ Backend connection failed', 'error');
+                }
+            } catch (error) {
+                updateStatus('connectionStatus', 'Backend Offline', 'error');
+                log(`❌ Backend connection error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testRegister() {
+            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            log(`🔄 Attempting registration for ${username}...`);
+
+            try {
+                const response = await fetch(`${API_URL}/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    token = data.access_token;
+                    localStorage.setItem('token', token);
+                    updateStatus('authStatus', 'Registration Successful', 'success');
+                    log('✅ Registration successful', 'success');
+                } else {
+                    updateStatus('authStatus', `Registration Failed: ${data.detail}`, 'error');
+                    log(`❌ Registration failed: ${data.detail}`, 'error');
+                }
+            } catch (error) {
+                updateStatus('authStatus', 'Registration Error', 'error');
+                log(`❌ Registration error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testLogin() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            log(`🔄 Attempting login for ${username}...`);
+
+            try {
+                const response = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    token = data.access_token;
+                    localStorage.setItem('token', token);
+                    updateStatus('authStatus', 'Login Successful', 'success');
+                    log('✅ Login successful', 'success');
+                } else {
+                    updateStatus('authStatus', `Login Failed: ${data.detail}`, 'error');
+                    log(`❌ Login failed: ${data.detail}`, 'error');
+                }
+            } catch (error) {
+                updateStatus('authStatus', 'Login Error', 'error');
+                log(`❌ Login error: ${error.message}`, 'error');
+            }
+        }
+
+        function testLogout() {
+            token = null;
+            localStorage.removeItem('token');
+            updateStatus('authStatus', 'Logged Out', 'warning');
+            log('🔄 Logged out', 'warning');
+        }
+
+        async function runTest() {
+            if (!token) {
+                updateStatus('apiStatus', 'Please login first', 'error');
+                return;
+            }
+
+            const testUrl = document.getElementById('testUrl').value;
+            const instructions = document.getElementById('instructions').value;
+
+            log(`🔄 Starting test for ${testUrl}...`);
+
+            try {
+                const response = await fetch(`${API_URL}/run-tests`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        test_url: testUrl,
+                        cycle_overview: 'Frontend test cycle',
+                        testing_instructions: instructions,
+                        provider: 'uTest'
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentJobId = data.id;
+                    document.getElementById('jobId').value = currentJobId;
+                    updateStatus('apiStatus', `Test Started - Job ID: ${currentJobId}`, 'success');
+                    log(`✅ Test started successfully - Job ID: ${currentJobId}`, 'success');
+                } else {
+                    updateStatus('apiStatus', `Test Failed: ${data.detail}`, 'error');
+                    log(`❌ Test failed: ${data.detail}`, 'error');
+                }
+            } catch (error) {
+                updateStatus('apiStatus', 'Test Error', 'error');
+                log(`❌ Test error: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkJobStatus() {
+            if (!token || !currentJobId) {
+                updateStatus('apiStatus', 'No active job to check', 'warning');
+                return;
+            }
+
+            log(`🔄 Checking status for job ${currentJobId}...`);
+
+            try {
+                const response = await fetch(`${API_URL}/jobs/${currentJobId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    updateStatus('apiStatus', `Job Status: ${data.status}`, 'info');
+                    log(`✅ Job status: ${data.status}`, 'success');
+                } else {
+                    updateStatus('apiStatus', 'Status Check Failed', 'error');
+                    log(`❌ Status check failed: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                updateStatus('apiStatus', 'Status Check Error', 'error');
+                log(`❌ Status check error: ${error.message}`, 'error');
+            }
+        }
+
+        function testWebSocket() {
+            const jobId = document.getElementById('jobId').value || currentJobId;
+            
+            if (!jobId) {
+                updateStatus('wsStatus', 'Please provide Job ID', 'error');
+                return;
+            }
+
+            log(`🔄 Connecting to WebSocket for job ${jobId}...`);
+
+            try {
+                const wsUrl = `ws://localhost:8000/ws/${jobId}`;
+                websocket = new WebSocket(wsUrl);
+
+                websocket.onopen = () => {
+                    updateStatus('wsStatus', 'WebSocket Connected', 'success');
+                    log('✅ WebSocket connected successfully', 'success');
+                };
+
+                websocket.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    log(`📨 WebSocket message: ${data.status} - ${data.message}`, 'info');
+                };
+
+                websocket.onclose = () => {
+                    updateStatus('wsStatus', 'WebSocket Closed', 'warning');
+                    log('🔄 WebSocket connection closed', 'warning');
+                };
+
+                websocket.onerror = (error) => {
+                    updateStatus('wsStatus', 'WebSocket Error', 'error');
+                    log(`❌ WebSocket error: ${error}`, 'error');
+                };
+
+            } catch (error) {
+                updateStatus('wsStatus', 'WebSocket Connection Failed', 'error');
+                log(`❌ WebSocket connection failed: ${error.message}`, 'error');
+            }
+        }
+
+        function closeWebSocket() {
+            if (websocket) {
+                websocket.close();
+                websocket = null;
+                updateStatus('wsStatus', 'WebSocket Disconnected', 'warning');
+                log('🔄 WebSocket disconnected manually', 'warning');
+            }
+        }
+
+        // Initialize
+        checkConnection();
+        if (token) {
+            updateStatus('authStatus', 'Token Found in Storage', 'info');
+            log('🔄 Found existing token in localStorage', 'info');
+        }
+
+        // Monitor network requests
+        const originalFetch = window.fetch;
+        window.fetch = function(...args) {
+            const url = args[0];
+            const options = args[1] || {};
+            log(`🌐 ${options.method || 'GET'} ${url}`, 'info');
+            
+            return originalFetch.apply(this, args)
+                .then(response => {
+                    log(`📡 Response: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                    return response;
+                })
+                .catch(error => {
+                    log(`❌ Network error: ${error.message}`, 'error');
+                    throw error;
+                });
+        };
+    </script>
+</body>
+</html>
