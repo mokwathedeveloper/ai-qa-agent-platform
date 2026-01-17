@@ -6,10 +6,12 @@ export default function Dashboard() {
   const [status, setStatus] = useState<'IDLE' | 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'ERROR'>('IDLE');
   const [logs, setLogs] = useState<string[]>([]);
   const [jobId, setJobId] = useState<string | null>(null);
+  const [bugs, setBugs] = useState<any[]>([]);
 
   const handleRunTests = async () => {
     setStatus('PENDING');
     setLogs(['Starting tests...']);
+    setBugs([]);
     setJobId(null);
     
     try {
@@ -36,6 +38,7 @@ export default function Dashboard() {
             if (['COMPLETED', 'FAILED', 'ERROR'].includes(data.status)) {
                 setStatus(data.status);
                 setLogs(data.logs);
+                setBugs(data.bugs || []);
                 clearInterval(interval);
             } else {
                  setStatus(data.status);
@@ -98,10 +101,33 @@ export default function Dashboard() {
                         <h2 className="text-xl font-semibold text-gray-900">Recent Bugs</h2>
                     </div>
                     <div className="divide-y divide-gray-200">
-                        {/* Placeholder for bugs */}
-                         <div className="p-6 text-center text-gray-500">
-                            No bugs detected yet. Run tests to start analysis.
-                        </div>
+                        {bugs.length === 0 ? (
+                            <div className="p-6 text-center text-gray-500">
+                                {status === 'COMPLETED' ? 'No bugs detected.' : 'No bugs detected yet. Run tests to start analysis.'}
+                            </div>
+                        ) : (
+                            bugs.map((bug, index) => (
+                                <div key={index} className="p-6 hover:bg-gray-50 cursor-pointer">
+                                    <div className="flex justify-between items-start">
+                                        <div className="space-y-2">
+                                            <h3 className="text-lg font-medium text-gray-900">{bug.summary || 'No Summary'}</h3>
+                                            <p className="text-sm text-gray-500">{bug.environment || 'Env Unknown'}</p>
+                                        </div>
+                                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                                            bug.severity === 'Critical' ? 'bg-red-100 text-red-800' :
+                                            bug.severity === 'High' ? 'bg-orange-100 text-orange-800' :
+                                            'bg-yellow-100 text-yellow-800'
+                                        }`}>
+                                            {bug.severity || 'Normal'}
+                                        </span>
+                                    </div>
+                                    <div className="mt-2 text-sm text-gray-600">
+                                        <p><strong>Steps:</strong> {bug.steps}</p>
+                                        <p className="mt-1"><strong>Actual:</strong> {bug.actual_result}</p>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
             </div>
