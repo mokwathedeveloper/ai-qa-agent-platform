@@ -1,5 +1,6 @@
 from fastapi import FastAPI, BackgroundTasks, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from backend.agent.runner import run_automation_tests
 from backend.agent.analyzer import analyze_test_run
 from backend.database.core import init_db, get_db
@@ -8,6 +9,7 @@ from backend.schemas import BugSchema
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import uuid
+import os
 from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
 
@@ -26,6 +28,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount artifacts directory for static file serving
+# Ensure the directory exists
+ARTIFACTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "artifacts")
+os.makedirs(ARTIFACTS_DIR, exist_ok=True)
+app.mount("/artifacts", StaticFiles(directory=ARTIFACTS_DIR), name="artifacts")
 
 # Simple in-memory state
 job_store: Dict[str, Any] = {}
