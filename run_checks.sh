@@ -1,11 +1,15 @@
 #!/bin/bash
 set -e
 
-echo "Running Frontend Build..."
+# Build the frontend
 cd frontend
 npm run build
 cd ..
 
-echo "Running Backend Tests..."
+# Run backend tests
 source backend/venv/bin/activate
-PYTHONPATH=. pytest
+export PYTHONPATH=.
+pytest
+
+# Final message
+echo "All systems operational."
