@@ -7,6 +7,18 @@ export default function Dashboard() {
   const [logs, setLogs] = useState<string[]>([]);
   const [jobId, setJobId] = useState<string | null>(null);
   const [bugs, setBugs] = useState<any[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
+
+  const fetchHistory = () => {
+      fetch('http://localhost:8000/bugs')
+        .then(res => res.json())
+        .then(data => setHistory(data))
+        .catch(console.error);
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
 
   const handleRunTests = async () => {
     setStatus('PENDING');
@@ -39,6 +51,7 @@ export default function Dashboard() {
                 setStatus(data.status);
                 setLogs(data.logs);
                 setBugs(data.bugs || []);
+                fetchHistory(); // Refresh history
                 clearInterval(interval);
             } else {
                  setStatus(data.status);
@@ -94,24 +107,25 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* Bug List */}
-            <div className="lg:col-span-2">
+            {/* Main Content */}
+            <div className="lg:col-span-2 space-y-8">
+                {/* Current Run Bugs */}
                 <div className="bg-white rounded-lg shadow overflow-hidden">
                     <div className="px-6 py-5 border-b border-gray-200">
-                        <h2 className="text-xl font-semibold text-gray-900">Recent Bugs</h2>
+                        <h2 className="text-xl font-semibold text-gray-900">Current Run Results</h2>
                     </div>
-                    <div className="divide-y divide-gray-200">
+                    <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
                         {bugs.length === 0 ? (
                             <div className="p-6 text-center text-gray-500">
-                                {status === 'COMPLETED' ? 'No bugs detected.' : 'No bugs detected yet. Run tests to start analysis.'}
+                                {status === 'COMPLETED' ? 'No bugs detected in this run.' : 'Run tests to see results.'}
                             </div>
                         ) : (
                             bugs.map((bug, index) => (
-                                <div key={index} className="p-6 hover:bg-gray-50 cursor-pointer">
+                                <div key={index} className="p-6 hover:bg-gray-50">
                                     <div className="flex justify-between items-start">
                                         <div className="space-y-2">
                                             <h3 className="text-lg font-medium text-gray-900">{bug.summary || 'No Summary'}</h3>
-                                            <p className="text-sm text-gray-500">{bug.environment || 'Env Unknown'}</p>
+                                            <p className="text-sm text-gray-500">Test: {bug.test_name}</p>
                                         </div>
                                         <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
                                             bug.severity === 'Critical' ? 'bg-red-100 text-red-800' :
@@ -121,9 +135,44 @@ export default function Dashboard() {
                                             {bug.severity || 'Normal'}
                                         </span>
                                     </div>
-                                    <div className="mt-2 text-sm text-gray-600">
-                                        <p><strong>Steps:</strong> {bug.steps}</p>
-                                        <p className="mt-1"><strong>Actual:</strong> {bug.actual_result}</p>
+                                    <p className="mt-2 text-sm text-gray-600"><strong>Status:</strong> {bug.status}</p>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+
+                {/* Bug History */}
+                <div className="bg-white rounded-lg shadow overflow-hidden">
+                    <div className="px-6 py-5 border-b border-gray-200">
+                        <h2 className="text-xl font-semibold text-gray-900">Bug History</h2>
+                    </div>
+                    <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
+                        {history.length === 0 ? (
+                            <div className="p-6 text-center text-gray-500">
+                                No history available.
+                            </div>
+                        ) : (
+                            history.map((bug, index) => (
+                                <div key={index} className="p-6 hover:bg-gray-50">
+                                    <div className="flex justify-between items-start">
+                                        <div className="space-y-2">
+                                            <h3 className="text-lg font-medium text-gray-900">{bug.summary}</h3>
+                                            <p className="text-sm text-gray-500">Test: {bug.test_name}</p>
+                                            <p className="text-xs text-gray-400">{new Date(bug.created_at).toLocaleString()}</p>
+                                        </div>
+                                        <div className="flex flex-col items-end space-y-2">
+                                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                                                bug.severity === 'Critical' ? 'bg-red-100 text-red-800' :
+                                                bug.severity === 'High' ? 'bg-orange-100 text-orange-800' :
+                                                'bg-yellow-100 text-yellow-800'
+                                            }`}>
+                                                {bug.severity}
+                                            </span>
+                                            <span className="text-xs text-gray-500 border border-gray-200 px-2 py-1 rounded">
+                                                {bug.status}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             ))
