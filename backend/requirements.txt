@@ -1,0 +1,8 @@
+playwright
+pytest
+requests
+openai
+fastapi
+uvicorn
+python-dotenv
+pydantic
